@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import dac
-import streamlit_antd_components as sac
 
 
 st.set_page_config(

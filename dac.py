@@ -1,54 +1,84 @@
 import psycopg2
+import streamlit as st
+
 
 def connect():
-    """Establish a connection to the PostgreSQL database."""
-    connection = None
 
     try:
-        connection = psycopg2.connect(
-
-            database="postgres",
-            user="postgres",
-            password="123",
-            host="localhost",
-            port="5432"
+        return psycopg2.connect(
+            host=st.secrets["postgres"]["host"],
+            port=st.secrets["postgres"]["port"],
+            database=st.secrets["postgres"]["database"],
+            user=st.secrets["postgres"]["user"],
+            password=st.secrets["postgres"]["password"],
+            sslmode=st.secrets["postgres"].get("sslmode", "require"),
+            connect_timeout=10,
         )
-    except psycopg2.Error as e:
 
-        print(f"Error connecting to the database: {e}")
+    except (psycopg2.Error, KeyError) as error:
+        st.error(f"Database connection failed: {error}")
         return None
-    
-    return connection
 
-def add_answers(age, gndr, plng, clr):
+
+def add_answers(age, gender, programming_language, favourite_color):
+
     connection = connect()
+    if connection is None:
+        return False
 
-    if connection != None:
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    " INSERT INTO questioned (age, gender, planguage, favcolor) VALUES (%s, %s, %s, %s);", (age,  gender,  programming_language, favourite_color) 
+                    )
 
-        cursor = connection.cursor()
-        cursor.execute("INSERT INTO questioned (age, gender, planguage, favcolor) VALUES (%s, %s, %s, %s);" ,[age, gndr, plng, clr])
-        connection.commit()
-        cursor.close()
+        return True
+
+    except psycopg2.Error as error:
+        st.error(f"Could not save the answers: {error}")
+        return False
+
+    finally:
         connection.close()
+
 
 def show_answers():
-    connection = connect()
-    result = None
 
-    if connection != None:
-        cursor = connection.cursor()
-        cursor.execute("SELECT * FROM questioned ORDER BY id")
-        result = cursor.fetchall()
-        cursor.close()
+    connection = connect()
+    if connection is None:
+        return []
+
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute( "SELECT id, age, gender,  planguage, favcolor FROM questioned ORDER BY id;")
+
+                return cursor.fetchall()
+
+    except psycopg2.Error as error:
+        st.error(f"Could not load the answers: {error}")
+        return []
+
+    finally:
         connection.close()
-    return result
+
 
 def clear_answers():
-    connection = connect()
-    if connection != None:
 
-        cursor = connection.cursor()
-        cursor.execute("TRUNCATE TABLE questioned RESTART IDENTITY;")
-        connection.commit()
-        cursor.close()
+    connection = connect()
+    if connection is None:
+        return False
+
+    try:
+        with connection:
+            with connection.cursor() as cursor:
+                cursor.execute("TRUNCATE TABLE questioned RESTART IDENTITY;")
+        return True
+
+    except psycopg2.Error as error:
+        st.error(f"Could not clear the answers: {error}")
+        return False
+
+    finally:
         connection.close()

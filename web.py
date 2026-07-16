@@ -17,32 +17,36 @@ def submit_answers():
     p_language = st.session_state.language
     fav_color = st.session_state.color
 
+    st.session_state.submitted = False
+
     if age == "-- Select age --":
-        st.error("Please select your age!", icon="🚨")
+        st.session_state.error_message= ("Please select your age!")
+        return
     elif gender == "-- Select gender --":
-        st.error("Please select a gender!", icon="🚨")
+        st.session_state.error_message = ("Please select a gender!")
+        return
     elif p_language == "-- Select programming language --":
-        st.error("Please select a programming language!", icon="🚨")
+        st.session_state.error_message = ("Please select a programming language!")
+        return
     elif fav_color == "-- Select color --":
-        st.error("Please select a favourite color!", icon="🚨")
+        st.session_state.error_message = ("Please select your color!")
+        return
     else:
         age=int(age)
         dac.add_answers(age, gender, p_language, fav_color)
-
-        with open("answers.txt", "a", encoding="utf-8") as f:
-            f.write(f"{age}, {gender}, {p_language}, {fav_color}\n")
-
         st.session_state.submitted = True
 
 def clear_answers():
-    dac.clear_answers()
-    open("answers.txt", "w").close()
+
+    cleared = dac.clear_answers()
+    st.session_state.cleared = cleared
 
 def reset_answers():
     st.session_state.age = "-- Select age --"
     st.session_state.gender = "-- Select gender --"
     st.session_state.language = "-- Select language --"
     st.session_state.color = "-- Select color --"
+    st.session_state.reset_completed = True
 
 
 age = st.selectbox('Age', ["-- Select age --"] + list(range(1, 121)), key="age")
@@ -53,39 +57,53 @@ fav_color = st.selectbox("Favourite color:", ("-- Select color --", "White", "Bl
 submit, reset, clear = st.columns([1,1,1])
 
 with submit:
-    if st.button(
+    st.button(
         "Submit answers", 
         width="content", 
         type="primary", 
         use_container_width=True, 
         on_click=submit_answers
-        ):
-        if st.session_state.get("submitted", False):
-            st.success("Successfully submitted your answers!", width="stretch", icon="🔥")
-            st.session_state.submitted = False
+        )
             
 with reset:
-    if st.button(
+    st.button(
         "Reset answers", 
         width="content", 
         type="primary", 
         use_container_width=True, 
         on_click=reset_answers
-        ):
-        st.success("Elements successfully set back to default value.", width="stretch", icon="🔥")
+        )
 
 with clear:
-    if st.button(
+    st.button(
         "Clear answers", 
         width="content", 
         type="primary", 
         use_container_width=True, 
         on_click=clear_answers
-        ):
-        st.success("Successfully cleared the previous answers!", width="stretch", icon="🔥")
+        )
+
+if st.session_state.get("submitted", False):
+    st.success("Successfully submitted your answers!")
+    st.session_state.submitted = False
+
+if st.session_state.get("error_message"):
+    st.error(st.session_state.error_message)
+    st.session_state.error_message = None
+
+if st.session_state.get("reset_completed", False):
+    st.success("Elements successfully set back to default value.")
+    st.session_state.reset_completed = False
+
+if st.session_state.get("cleared", False):
+    st.success("Successfully cleared the previous answers!")
+    st.session_state.cleared = False
 
 answers = dac.show_answers()
+
 df = pd.DataFrame(
     answers, columns=["ID", "Age", "Gender", "Programming Language", "Favourite Color"]
     )
+
+st.subheader("Submitted answers")
 st.dataframe(df)
